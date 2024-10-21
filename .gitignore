@@ -50,3 +50,4 @@ contracts/docs/
 # Dotenv file
 .env
 contracts/.env/
+compressor/

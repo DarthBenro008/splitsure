@@ -99,7 +99,10 @@ contract Splitsure {
             splitAmounts.length == group.members.length,
             "Incorrect split amounts"
         );
-        require(msg.value == amount, "Sent value must match the expense amount");
+        require(
+            msg.value == amount,
+            "Sent value must match the expense amount"
+        );
 
         group.expenseCount++;
         Expense storage expense = group.expenses[group.expenseCount];
@@ -108,20 +111,23 @@ contract Splitsure {
 
         uint totalSplit = 0;
         // Update each member's debt
-    for (uint i = 0; i < group.members.length; i++) {
-        address member = group.members[i];
-        expense.splitAmount[member] = splitAmounts[i];
-        if (member != msg.sender) {
-            debts[member][msg.sender] += splitAmounts[i];
-            totalOwedByUser[member] += splitAmounts[i];
-            totalOwedToUser[msg.sender] += splitAmounts[i];
-            updateReputationScores(member, msg.sender, splitAmounts[i]);
+        for (uint i = 0; i < group.members.length; i++) {
+            address member = group.members[i];
+            expense.splitAmount[member] = splitAmounts[i];
+            if (member != msg.sender) {
+                debts[member][msg.sender] += splitAmounts[i];
+                totalOwedByUser[member] += splitAmounts[i];
+                totalOwedToUser[msg.sender] += splitAmounts[i];
+                updateReputationScores(member, msg.sender, splitAmounts[i]);
+            }
+            decayReputationScore(member);
+            totalSplit += splitAmounts[i];
         }
-        decayReputationScore(member);
-        totalSplit += splitAmounts[i];
-    }
 
-        require(totalSplit == amount, "Total split must equal the expense amount");
+        require(
+            totalSplit == amount,
+            "Total split must equal the expense amount"
+        );
 
         emit ExpenseAdded(groupId, msg.sender, amount);
     }
@@ -171,13 +177,20 @@ contract Splitsure {
         require(msg.value == debtAmount, "Incorrect payment amount");
 
         debts[msg.sender][creditor] = 0;
-        totalOwedByUser[msg.sender] = totalOwedByUser[msg.sender] > debtAmount ? totalOwedByUser[msg.sender] - debtAmount : 0;
-        totalOwedToUser[creditor] = totalOwedToUser[creditor] > debtAmount ? totalOwedToUser[creditor] - debtAmount : 0;
+        totalOwedByUser[msg.sender] = totalOwedByUser[msg.sender] > debtAmount
+            ? totalOwedByUser[msg.sender] - debtAmount
+            : 0;
+        totalOwedToUser[creditor] = totalOwedToUser[creditor] > debtAmount
+            ? totalOwedToUser[creditor] - debtAmount
+            : 0;
 
         // Update only the debtor's score
         uint debtorScore = reputationScores[msg.sender];
         if (debtorScore < MAX_REPUTATION_SCORE) {
-            reputationScores[msg.sender] = (debtorScore + debtAmount) > MAX_REPUTATION_SCORE ? MAX_REPUTATION_SCORE : debtorScore + debtAmount;
+            reputationScores[msg.sender] = (debtorScore + debtAmount) >
+                MAX_REPUTATION_SCORE
+                ? MAX_REPUTATION_SCORE
+                : debtorScore + debtAmount;
         }
 
         // Decay the scores
@@ -207,8 +220,14 @@ contract Splitsure {
                     if (member != msg.sender) {
                         totalToSettle += debt;
                         debts[member][msg.sender] = 0;
-                        totalOwedByUser[member] = totalOwedByUser[member] > debt ? totalOwedByUser[member] - debt : 0;
-                        totalOwedToUser[msg.sender] = totalOwedToUser[msg.sender] > debt ? totalOwedToUser[msg.sender] - debt : 0;
+                        totalOwedByUser[member] = totalOwedByUser[member] > debt
+                            ? totalOwedByUser[member] - debt
+                            : 0;
+                        totalOwedToUser[msg.sender] = totalOwedToUser[
+                            msg.sender
+                        ] > debt
+                            ? totalOwedToUser[msg.sender] - debt
+                            : 0;
                         updateReputationScores(msg.sender, member, debt);
                         decayReputationScore(member);
                     }
@@ -298,36 +317,46 @@ contract Splitsure {
     }
 
     // Function to update reputation scores
-function updateReputationScores(address debtor, address creditor, uint amount) internal {
-    uint currentTime = block.timestamp;
+    function updateReputationScores(
+        address debtor,
+        address creditor,
+        uint amount
+    ) internal {
+        uint currentTime = block.timestamp;
 
-    // Initialize scores if they haven't been set
-    if (reputationScores[debtor] == 0) {
-        reputationScores[debtor] = MAX_REPUTATION_SCORE;
-    }
-    if (reputationScores[creditor] == 0) {
-        reputationScores[creditor] = MAX_REPUTATION_SCORE;
-    }
+        // Initialize scores if they haven't been set
+        if (reputationScores[debtor] == 0) {
+            reputationScores[debtor] = MAX_REPUTATION_SCORE;
+        }
+        if (reputationScores[creditor] == 0) {
+            reputationScores[creditor] = MAX_REPUTATION_SCORE;
+        }
 
-    // Update only the debtor's score
-    uint debtorScore = reputationScores[debtor];
-    if (debtorScore > 0) {
-        reputationScores[debtor] = debtorScore > amount ? debtorScore - amount : 0;
-    }
+        // Update only the debtor's score
+        uint debtorScore = reputationScores[debtor];
+        if (debtorScore > 0) {
+            reputationScores[debtor] = debtorScore > amount
+                ? debtorScore - amount
+                : 0;
+        }
 
-    lastReputationUpdate[debtor] = currentTime;
-    lastReputationUpdate[creditor] = currentTime;
-}
+        lastReputationUpdate[debtor] = currentTime;
+        lastReputationUpdate[creditor] = currentTime;
+    }
 
     // Function to decay reputation scores
     function decayReputationScore(address user) public {
         uint currentTime = block.timestamp;
-        if (currentTime - lastReputationUpdate[user] >= REPUTATION_UPDATE_WINDOW) {
+        if (
+            currentTime - lastReputationUpdate[user] >= REPUTATION_UPDATE_WINDOW
+        ) {
             uint userScore = reputationScores[user];
             if (userScore > 0 && userScore < MAX_REPUTATION_SCORE) {
                 // Decay the score by 10% every update window
                 uint decayAmount = userScore / 10;
-                reputationScores[user] = userScore > decayAmount ? userScore - decayAmount : 0;
+                reputationScores[user] = userScore > decayAmount
+                    ? userScore - decayAmount
+                    : 0;
             }
             lastReputationUpdate[user] = currentTime;
         }

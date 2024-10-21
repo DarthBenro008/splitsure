@@ -1,6 +1,15 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import dynamic from "next/dynamic";
+import '@coinbase/onchainkit/styles.css';
+
+const OnchainProviders = dynamic(
+  () => import('@/components/onchain-providers'),
+  {
+    ssr: false,
+  },
+);
 
 const chestor = localFont({
   src: [
@@ -38,7 +47,9 @@ export default function RootLayout({
       <body
         className={`${chestor.variable} font-sans antialiased`}
       >
-        {children}
+        <OnchainProviders>
+          {children}
+        </OnchainProviders>
       </body>
     </html>
   );
